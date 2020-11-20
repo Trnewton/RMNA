@@ -428,7 +428,7 @@ class RMNA:
             self.solve_MNA()
 
             # Update voltage series for memristors
-
+            
 
             # Compute currrents
             Is = self.get_Current(junctions)
