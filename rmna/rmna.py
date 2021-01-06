@@ -7,10 +7,31 @@ import networkx as nx
 
 import csv
 
+
 #### Auxillary Functions ####
 
 def memristance(w, w_0=6e-9, R_on=100, R_off=10e4):
-    ''''''
+    '''
+        Filament growth model for computing memristance of a memriistor.
+
+        Patameters
+        ----------
+        w : float
+            The length of the filament in the memristor junction.
+        w_0 : float
+            The total seperation of the memristor junction.
+        R_on : float
+            The resistance of the memristor when it is full on, i.e. when the 
+            w = w_0.
+        R_off : float 
+            The resistance of the memristor when it is full off, i.e. when the 
+            w = 0.
+
+        Returns
+        -------
+        M : float
+            The memristance of the memristor.
+    '''
     
     M = R_on * w / w_0 + R_off * (1 - w / w_0)
     return M
@@ -296,14 +317,47 @@ class RMNA:
         return self.A, self.x, self.z
 
     def solve_MNA(self):
-        ''''''
+        '''
+            Solves the MNA system in the RMNA object.
+
+            Preconditions
+            -------------
+            The RMNA object must have a MNA system defined, that is RMNA.generate_MNA()
+            must be called first.   
+
+            Returns
+            -------
+            x_sol : np.ndarray (1-dimensional)
+                The solution to the MNA systems
+        '''
 
         # TODO: Make the method of solving flexible
+        # TODO: Add error/precondition checking/handlinhg
         self.x_sol = np.linalg.solve(self.A, self.z)
         return self.x_sol
 
     def get_Current(self, junctions):
-        ''''''
+        '''
+            Computes the current for the junctions given.
+
+            Parameters
+            ----------
+            junctions : iterable
+                Iteratable (usually list) of junctions for which the current is
+                desired. Each junction should be a tuple of nodes and the returned
+                current will be that between the two nodes. The directioin of the
+                current is out of the first node and into the second
+
+            Returns
+            -------
+            currents : dict
+                Dictonary where the keys are the junction tuples given in junctions
+                and the values are the currents over their corresponding junction
+
+            Notes
+            -----
+            - TODO: Need to add error checking and handling
+        '''
 
         if self.x_sol is None or self.x is None:
             print("ERROR: Must generate and solve MNA system first")
@@ -332,8 +386,29 @@ class RMNA:
 
         return currents
 
-    def run_RMNA(self, volt_In_Series):
-        ''''''
+    def run_RMNA(self, volt_In_Series, dt):
+        '''
+            Runs a recursive MNA series over the stored graph network.
+
+            Parameters
+            ----------
+            volt_In_Series : list
+                List of the voltages for each voltage node as a time series
+
+            Returns
+            -------
+            node_I_series : list
+                List of the current through each junction (which iis a tuple of 
+                nodes). The first element in the list is a list of junctions.
+            M_series : list
+                List of the memristance through each junction (which is a tuple of 
+                nodes). The first element in the list is a list of junctions.
+
+            Notes
+            -----
+            TODO: Update so we use Pandas dataframes instead of lists for data
+            TODO: Add voltage reading
+        '''
 
         # Get list of junctions
         junctions = list(self.w.keys())
@@ -353,7 +428,6 @@ class RMNA:
             self.solve_MNA()
 
             # Update voltage series for memristors
-
 
             # Compute currrents
             Is = self.get_Current(junctions)
