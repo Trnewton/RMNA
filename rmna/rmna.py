@@ -36,49 +36,51 @@ def memristance(w, w_0=6e-9, R_on=100, R_off=10e4):
     M = R_on * w / w_0 + R_off * (1 - w / w_0)
     return M
 
-def filament_change_1(I, w, u=1e-15, w_0=6e-9, R_on=100):
+def filament_change_1(I, w, w_0=6e-9, R_on=100, u_v=1e-15):
     '''
         Basic model for computing change in filament length in nanowire junction
 
         Parameters
         ----------
         I : float
-            current current
-        w : float 
-            current filament length
-        u : float
-            ionic mobility
+            Current passing through memristor.
+        w : float
+            The length of the filament in the memristor junction.
         w_0 : float
-            junction seperation
+            The total seperation of the memristor junction.
         R_on : float
-            on resistance
+            The resistance of the memristor when it is full on, i.e. when the 
+            w = w_0.
+        u_v : float
+            Ionic mobility.s
 
         Returns
         -------
         dwdt : float
-            rate of change in filament length 
+            Rate of change in filament length.
     '''
 
-    dwdt = u * R_on * I / w_0
+    dwdt = u_v * R_on * I / w_0
     
     return dwdt
 
-def filament_change_2(I, w, u=1e-15, w_0=6e-9, R_on=100):
+def filament_change_2(I, w, w_0=6e-9, R_on=100, u_v=1e-15):
     '''
         Basic model for computing change in filament length in nanowire junction
 
         Parameters
         ----------
         I : float
-            current current
+            Current passing through memristor
         w : float 
-            current filament length
+            Filament length in junction
+        w_0 : float
+            The total seperation of the memristor junction.
+        R_on : float
+            The resistance of the memristor when it is full on, i.e. when the 
+            w = w_0.
         u : float
             ionic mobility
-        w_0 : float
-            junction seperation
-        R_on : float
-            on resistance
 
         Returns
         -------
@@ -88,26 +90,45 @@ def filament_change_2(I, w, u=1e-15, w_0=6e-9, R_on=100):
 
     omega = (w * (w_0 - w)) / w_0 * w_0
 
-    dxdt = u * R_on * I * omega / (w_0*w_0)
+    dxdt = u_v * R_on * I * omega / (w_0*w_0)
     return dxdt
 
 def heuns_step(func, x_0, y_0, h, *args):
-    '''
-    
-    '''
+    ''''''
     
     k_1 = func(x_0, y_0, *args)
     # k_2 = func(x_0 + h, y_0 + h*k_1, *args)
     
-    y_1 = y_0 + (h/2)*(k_1 + k_1)
+    y_1 = y_0 + (h/2) * (k_1 + k_1)
     
     return y_1
 
-def memristor_step(I, w, R_on=100, w_0=6e-9, u_v=1e-15, dt=1e-5):
-    ''''''
+def memristor_step(I, w, dt=1e-5, w_0=6e-9, R_on=100, u_v=1e-15, int_step=heuns_step):
+     '''
+        Takes a integration step for a memristor using the flament change model.
+
+        Parameters
+        ----------
+        I : float
+            Current passing through memristor.
+        w : float
+            The length of the filament in the memristor junction.
+        dt : float
+            The integration time step.
+        w_0 : float
+            The total seperation of the memristor junction.
+        R_on : float
+            The resistance of the memristor when it is full on, i.e. when the 
+            w = w_0.
+
+        Returns
+        -------
+        w_next : float
+            The new value of w, the filament length.
+    '''
 
     # Arguments we need to pass to the filament growth model
-    args = (u_v, w_0, R_on)
+    args = (w_0, R_on, u_v)
 
     # Take Heuns step
     w_next = heuns_step(filament_change_1, I, w, dt, *args)
@@ -123,15 +144,15 @@ def memristor_step(I, w, R_on=100, w_0=6e-9, u_v=1e-15, dt=1e-5):
 #### Classes #### 
 
 class RMNA:
-    def __init__(self, M_model=memristance, M_step=memristor_step, M_args={}, \
-        m_step_args={}):
+    def __init__(self, M_model=memristance, W_step=memristor_step, M_args={}, \
+        w_step_args={}):
         self.G = nx.Graph()
         self.w = dict()
         self.volt_In = dict()
         self.M_model = M_model
         self.M_args = M_args
-        self.M_step = M_step
-        self.m_step_args = m_step_args
+        self.W_step = W_step
+        self.w_step_args = w_step_args
 
         self.z = None
         self.A = None
@@ -162,15 +183,17 @@ class RMNA:
             Notes
             -----
             TODO: Extend function to allow current input nodes, must also extend 
-            other functions to accomidate
+            other functions to accommodate 
         '''
+        # print('Booo')
+        # self.G = nx.Graph()
 
         # Iterate over connections
         for connection in network:
             # If connection is a resistor
             if connection[0] == 'R':
-                self.G.add_edge(connection[1], connection[2],\
-                    weight=connection[3], element='R')
+                self.G.add_edge(connection[1], connection[2], weight=connection[3],\
+                    element='R')
             # If connection is a memristor
             elif connection[0] == 'M':
                 self.w[(connection[1], connection[2])] = connection[3]
@@ -265,8 +288,13 @@ class RMNA:
             The x matrix is returned as a dictionary wherethe key is the name of 
             each node/plate and the value is which index of A and z it corresponds 
             to.
-        '''
 
+            Returns
+            -------
+            A : np.ndarray (2-dimensional)
+            z : np.ndarray (1-dimensional)
+            x : np.ndarray (1-dimensional)        
+        '''
         #TODO: Add support for current injection
         #TODO: Optimize, possible by caching some info about matrix structure
 
@@ -308,7 +336,6 @@ class RMNA:
                 self.A[n][m] = 1
                 self.z[m] = self.volt_In[v]
    
-
         ## Remove zero rows and columns ##
         self.A = self.A[~(self.A==0).all(1)]
         self.A = self.A[:, ~(self.A==0).all(0)]
@@ -363,26 +390,26 @@ class RMNA:
             print("ERROR: Must generate and solve MNA system first")
             return
 
-        # TODO: Make this worrk for all junctions not just memrstors
+        # TODO: Add error checking and handling
         currents = dict()
         for j in junctions:
-            if j in self.w:
-                # Get voltage values across junction
-                idx_a = self.x[str(j[0])]
-                V_a = self.x_sol[idx_a]
-                idx_b = self.x[str(j[1])]
-                V_b = self.x_sol[idx_b]
+            # if j in self.w:
+            # Get voltage values across junction
+            idx_a = self.x[str(j[0])]
+            V_a = self.x_sol[idx_a]
+            idx_b = self.x[str(j[1])]
+            V_b = self.x_sol[idx_b]
 
-                # Compute current
-                # NOTE:  Must be considerate of the direction of voltage/current
-                V = V_b - V_a
-                M = self.M_model(self.w[j], **self.M_args)
-                I = M * V
-                currents[j] = I
+            # Compute current
+            # NOTE:  Must be considerate of the direction of voltage/current
+            V = V_b - V_a
+            M = self.M_model(self.w[j], **self.M_args)
+            I = V / M
+            currents[j] = I
 
-            else:
-                print("ERROR: No such juncton exists.")
-                return
+            # else:
+            #     print("ERROR: No such juncton exists.")
+            #     return
 
         return currents
 
@@ -415,7 +442,8 @@ class RMNA:
 
         # Create lists for storing the V,I,M for each junction
         # TODO: Lists are inefficient, turn these into Pandas dataframes
-        node_V_series = [junctions]
+        # TODO: Add voltage readings
+        # node_V_series = [junctions]
         node_I_series = [junctions]
         M_series = [junctions]
 
@@ -435,12 +463,13 @@ class RMNA:
 
             # Update Memristance
             # TODO: Maybe optimize this so the function only calls once
-            M_arr = []
+            W_arr = []
             for m, j in enumerate(junctions):
-                M = self.M_step(Is[m], self.w[j])
-                M_arr.append(M)
-                self.update_Memristors([(j, M)])
+                w = self.W_step(Is[j], self.w[j], dt=dt)
+                W_arr.append(w)
+                self.update_Memristors([(j, w)])
 
-            M_series.append(M_arr)
+            M_series.append(W_arr)
 
-        return node_I_series, M_series, node_V_series
+        return node_I_series, M_series #, node_V_series
+        
