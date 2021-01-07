@@ -13,33 +13,32 @@ import heapq
 
 class nanowire_network:
     '''
-    
-
-    Attributes
-    ----------
-    wires : shapely MultiLineString
-        collection of shapely linestring objects whcih represent the physical nanowire network
-    plates : list
-        a list of tuples of the form (Linestring, "[N,I,V]", float) where the linestring object 
-        gives the physical representation of the plate, the string where the plate is current 
-        or voltage injecting, or neither, and the float the potential or current on the plate
-    intercepts : list
-        list of tuples of the form ((x, y), "W[0-9]+", "[W,P][0-9]+") where the first tuple (x, y) 
-        details the location of the intercept, and the strings the two wires or plate which intercept 
-    graph : networkx Graph
-        graphical representation of network, formed using either the Junction Dominated Assumption
-        or the Multi-Nodular Representation
-    graph_representation : str
-        string detailing which graphical model was used to generate the graph attribute
-
-    Methods
-    -------
-    set_plates : list 
         
 
+        Attributes
+        ----------
+        wires : shapely MultiLineString
+            collection of shapely linestring objects whcih represent the physical nanowire network
+        plates : list
+            a list of tuples of the form (Linestring, "[N,I,V]", float) where the linestring object 
+            gives the physical representation of the plate, the string where the plate is current 
+            or voltage injecting, or neither, and the float the potential or current on the plate
+        intercepts : list
+            list of tuples of the form ((x, y), "W[0-9]+", "[W,P][0-9]+") where the first tuple (x, y) 
+            details the location of the intercept, and the strings the two wires or plate which intercept 
+        graph : networkx Graph
+            graphical representation of network, formed using either the Junction Dominated Assumption
+            or the Multi-Nodular Representation
+        graph_representation : str
+            string detailing which graphical model was used to generate the graph attribute
+
+        Methods
+        -------
+        set_plates : list 
     '''
 
-    def __init__(self, num_wires, wire_length, width, height, creation_method='midpoint', seed=None ):
+    def __init__(self, num_wires, wire_length, width, height, \
+                creation_method='midpoint', seed=None ):
         '''
             Parameters
             ----------

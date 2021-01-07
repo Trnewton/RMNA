@@ -99,12 +99,12 @@ def heuns_step(func, x_0, y_0, h, *args):
     k_1 = func(x_0, y_0, *args)
     # k_2 = func(x_0 + h, y_0 + h*k_1, *args)
     
-    y_1 = y_0 + (h/2) * (k_1 + k_1)
+    y_1 = y_0 + (h/2)*(k_1 + k_1)
     
     return y_1
 
-def memristor_step(I, w, dt=1e-5, w_0=6e-9, R_on=100, u_v=1e-15, int_step=heuns_step):
-     '''
+def memristor_step(I, w, dt=1e-5, w_0=6e-9, R_on=100, u_v=1e-15):
+    '''
         Takes a integration step for a memristor using the flament change model.
 
         Parameters
@@ -185,8 +185,8 @@ class RMNA:
             TODO: Extend function to allow current input nodes, must also extend 
             other functions to accommodate 
         '''
-        # print('Booo')
-        # self.G = nx.Graph()
+
+        self.G = nx.Graph()
 
         # Iterate over connections
         for connection in network:
@@ -213,6 +213,8 @@ class RMNA:
         '''
             Used to read connections directly from a csv file
         '''
+
+        self.G = nx.Graph()
 
         with open(file_name, mode='r') as file:
             csv_reader = csv.reader(file, delimiter=delimiter)
@@ -304,7 +306,8 @@ class RMNA:
             return None
 
         # Initilize
-        self.A = np.zeros((len(self.G) + len(self.volt_In), len(self.G) + len(self.volt_In)))
+        self.A = np.zeros((len(self.G) + len(self.volt_In), len(self.G) 
+                            + len(self.volt_In)))
         self.x = {}
         self.z = np.zeros(len(self.G) + len(self.volt_In))
 
@@ -437,6 +440,8 @@ class RMNA:
             TODO: Add voltage reading
         '''
 
+        print('hello')
+
         # Get list of junctions
         junctions = list(self.w.keys())
 
@@ -472,4 +477,3 @@ class RMNA:
             M_series.append(W_arr)
 
         return node_I_series, M_series #, node_V_series
-        
