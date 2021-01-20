@@ -3,7 +3,7 @@ setup(
     name='rmna',
     version='1.0',
     author='Thomas Newton',
-    py_modules=['rmna',],
+    py_modules=['rmna','graph'],
     install_required=[
         "numpy",
         "matplotlib",
