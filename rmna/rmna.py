@@ -65,6 +65,34 @@ def filament_change_1(I, w, w_0=6e-9, R_on=100, u_v=1e-15):
     
     return dwdt
 
+def filament_change_disipative_1(I, w, w_0=6e-9, R_on=100, u_v=1e-15, tau=1):
+    '''
+        Basic model for computing change in filament length in nanowire junction
+
+        Parameters
+        ----------
+        I : float
+            Current passing through memristor.
+        w : float
+            The length of the filament in the memristor junction.
+        w_0 : float
+            The total seperation of the memristor junction.
+        R_on : float
+            The resistance of the memristor when it is full on, i.e. when the 
+            w = w_0.
+        u_v : float
+            Ionic mobility.s
+
+        Returns
+        -------
+        dwdt : float
+            Rate of change in filament length.
+    '''
+
+    dwdt = u_v * R_on * I / w_0 - tau*(w-w_0)*w_0
+    
+    return dwdt
+
 def filament_change_2(I, w, w_0=6e-9, R_on=100, u_v=1e-15):
     '''
         Basic model for computing change in filament length in nanowire junction
@@ -89,9 +117,9 @@ def filament_change_2(I, w, w_0=6e-9, R_on=100, u_v=1e-15):
             rate of change in filament length 
     '''
 
-    omega = (w * (w_0 - w)) / w_0 * w_0
+    omega = (w * (w_0 - w)) / (w_0 * w_0)
 
-    dxdt = u_v * R_on * I * omega / (w_0*w_0)
+    dxdt = u_v * R_on * I * omega / w_0
     return dxdt
 
 def heuns_step(func, x_0, y_0, h, *args):
@@ -104,7 +132,7 @@ def heuns_step(func, x_0, y_0, h, *args):
     
     return y_1
 
-def memristor_step(I, w, dt=1e-5, w_0=6e-9, R_on=100, u_v=1e-15):
+def memristor_step(I, w, dt=1e-5, model=filament_change_1, w_0=6e-9, **kwargs):
     '''
         Takes a integration step for a memristor using the flament change model.
 
@@ -128,11 +156,10 @@ def memristor_step(I, w, dt=1e-5, w_0=6e-9, R_on=100, u_v=1e-15):
             The new value of w, the filament length.
     '''
 
-    # Arguments we need to pass to the filament growth model
-    args = (w_0, R_on, u_v)
+    args = kwargs.get('w_step_args', {})
 
     # Take Heuns step
-    w_next = heuns_step(filament_change_1, I, w, dt, *args)
+    w_next = heuns_step(model, I, w, dt, *args)
     # Apply window functions
     if w_next > w_0:
         w_next = w_0
@@ -368,7 +395,7 @@ class RMNA:
         self.x_sol = np.linalg.solve(self.A, self.z)
         return self.x_sol
 
-    def get_Current(self, junctions):
+    def get_Electrical(self, edges):
         '''
             Computes the current for the junctions given.
 
@@ -397,26 +424,28 @@ class RMNA:
 
         # TODO: Add error checking and handling
         currents = dict()
-        for j in junctions:
-            # if j in self.w:
-            # Get voltage values across junction
-            idx_a = self.x[str(j[0])]
+        voltages = dict()
+        for e in edges:
+            # Get voltage values across edge
+            idx_a = self.x[str(e[0])]
             V_a = self.x_sol[idx_a]
-            idx_b = self.x[str(j[1])]
+            idx_b = self.x[str(e[1])]
             V_b = self.x_sol[idx_b]
+
+            voltages[str(e[0])] = V_a
+            voltages[str(e[1])] = V_b
 
             # Compute current
             # NOTE:  Must be considerate of the direction of voltage/current
             V = V_b - V_a
-            M = self.M_model(self.w[j], **self.M_args)
-            I = V / M
-            currents[str(j)] = I
+            if e in self.w:
+                R = self.M_model(self.w[e], **self.M_args)
+            else:
+                R = self.G.edges[e]['weight']
+            I = V / R
+            currents[str(e)] = I
 
-            # else:
-            #     print("ERROR: No such juncton exists.")
-            #     return
-
-        return currents
+        return currents, voltages
 
     def run_RMNA(self, volt_In_Series, dt, save_dir=None):
         '''
@@ -430,11 +459,13 @@ class RMNA:
             Returns
             -------
             node_I_series : list
-                List of the current through each junction (which iis a tuple of 
+                List of the current through each junction (which is a tuple of 
                 nodes). The first element in the list is a list of junctions.
             M_series : list
                 List of the memristance through each junction (which is a tuple of 
                 nodes). The first element in the list is a list of junctions.
+            V_series : list
+
 
             Notes
             -----
@@ -443,14 +474,15 @@ class RMNA:
         '''
 
         # Get list of junctions
+        edges = self.G.edges 
         junctions = list(self.w.keys())
 
         # Create lists for storing the V,I,M for each junction
         # TODO: Lists are inefficient, turn these into Pandas dataframes
         # TODO: Add voltage readings
-        # node_V_series = [junctions]
-        node_I_series = [junctions]
-        M_series = [junctions]
+        node_I_series = []
+        M_series = []
+        V_series = []
 
         # Run time series
         for n, volts in enumerate(volt_In_Series):
@@ -461,32 +493,36 @@ class RMNA:
             self.solve_MNA()
 
             # Update voltage series for memristors
-
+            
             # Compute currrents
-            Is = self.get_Current(junctions)
+            Is, Vs = self.get_Electrical(junctions)
             node_I_series.append(Is)
+            V_series.append(Vs)
 
             # Update Memristance
             # TODO: Maybe optimize this so the function only calls once
-            W_arr = []
+            W_arr = dict()
             for m, j in enumerate(junctions):
                 w = self.W_step(Is[str(j)], self.w[j], dt=dt)
-                W_arr.append(w)
+                W_arr[j] = w
                 self.update_Memristors([(j, w)])
 
             M_series.append(W_arr)
 
         if save_dir:
             if not os.path.exists(save_dir):
-                print('Directory does not exist, creating new one.')
+                print('Directory does not exist, creating:', save_dir)
                 os.makedirs(save_dir)
             else:
                 print('Saving to:', save_dir)
 
-            I_df = pd.DataFrame(node_I_series[1:])
-            M_df = pd.DataFrame.from_records(M_series[1:], columns=M_series[0])
+            I_df = pd.DataFrame(node_I_series)
+            V_df = pd.DataFrame(V_series)
+            M_df = pd.DataFrame(M_series)
 
-            temp = I_df.to_csv(save_dir+'I_df.csv')
-            temp = M_df.to_csv(save_dir+'M_df.csv')
+            I_df.to_csv(save_dir+'I_df.csv')
+            V_df.to_csv(save_dir+'V_df.csv')
+            M_df.to_csv(save_dir+'M_df.csv')
+            nx.write_edgelist(self.G, save_dir+'edgelist')
 
-        return node_I_series, M_series #, node_V_series
+        return node_I_series, M_series, V_series

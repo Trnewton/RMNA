@@ -46,8 +46,33 @@ def create_nwn_mid(N, X=1, Y=1, l0=1, seed=None):
 
     return list(zip(pos1, pos2))
 
-def csv_JDA():
+def calc_intercepts(wires, plates=None):
+    ''''''
+
+    intercepts = []
+
+        # Find intercepts between wires
+    for n in range(len(wires)):
+        for m in range(n, len(wires)):
+            if wires[n].crosses(wires[m]):
+                p = wires[n].intersection(wires[m])
+                intercepts.append(((p.x, p.y), 'W'+str(n), 'W'+str(m)))
+
+    # Find intercepts between wires and plates
+    for n, plate in enumerate(plates):
+        for m, wire in enumerate(wires):
+            if wire.crosses(plate):
+                p = wire.intersection(plate)
+                intercepts.append(((p.x, p.y),'P'+str(n), 'W'+str(m)))
+    
+        # Assuming plates do not short we do not need check if they intersect
+
+        return intercepts
+
+def csv_JDA(intercepts, junction_res=1):
     raise NotImplementedError
+
+
 
 def csv_MNR():
     raise NotImplementedError
@@ -63,21 +88,20 @@ def list_Grid(N, H, M):
     
     for n in range(N-1):
         for h in range(H-1):
-            grid.append(('M', n*H+h, n*H+h+1, M))
-            grid.append(('M', n*H+h, n*H+h+H, M))
+            grid.append(['M', n*H+h, n*H+h+1, M])
+            grid.append(['M', n*H+h, n*H+h+H, M])
             
     for n in range(N-1):
-        grid.append(('M', (n+1)*H-1, (n+2)*H-1, M))
+        grid.append(['M', (n+1)*H-1, (n+2)*H-1, M])
         
     for h in range(H-1):
-        grid.append(('M', (N-1)*H+h, (N-1)*H+h+1, M))
+        grid.append(['M', (N-1)*H+h, (N-1)*H+h+1, M])
             
     return grid
     
 
 ############################ Maze Nanowire Networks ############################
 
-#TODO: Make this an adjacency map, i.e. make each node map to a list of nodes 
 def _grid_dict(N, H):
     '''
     '''
@@ -130,7 +154,7 @@ def wilson_maze(N, H, start, finish):
                 path = dict()
                 if to_add:
                     start = random.choice(to_add)
-                    
+
             else:
                 cur_node = step
             
@@ -141,6 +165,7 @@ def single_path_2_mulit(maze, num_new_paths):
     '''
     
     pass
+
 
 
 if __name__ == "__main__":
