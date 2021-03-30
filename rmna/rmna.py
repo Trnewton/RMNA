@@ -11,7 +11,7 @@ import csv, os
 
 #### Auxillary Functions ####
 
-def memristance(w, w_0=6e-9, R_on=100, R_off=10e4):
+def memristance(w, w_0=6e-9, R_on=100, R_off=1e5):
     '''
         Filament growth model for computing memristance of a memriistor.
 
@@ -276,7 +276,7 @@ class RMNA:
             ----------
             W : Iteratable of indexibles
                 Expects to receive an iteratable object where each element is 
-                indexible with two elements, the first being thememristor connection 
+                indexible with two elements, the first being the memristor connection 
                 represented as a tuple and the second its respective junction gaps.
 
             Notes
@@ -437,7 +437,7 @@ class RMNA:
 
             # Compute current
             # NOTE:  Must be considerate of the direction of voltage/current
-            V = V_b - V_a
+            V = V_a - V_b
             if e in self.w:
                 R = self.M_model(self.w[e], **self.M_args)
             else:
@@ -479,7 +479,6 @@ class RMNA:
 
         # Create lists for storing the V,I,M for each junction
         # TODO: Lists are inefficient, turn these into Pandas dataframes
-        # TODO: Add voltage readings
         node_I_series = []
         M_series = []
         V_series = []
@@ -501,13 +500,13 @@ class RMNA:
 
             # Update Memristance
             # TODO: Maybe optimize this so the function only calls once
-            W_arr = dict()
+            M_arr = dict()
             for m, j in enumerate(junctions):
                 w = self.W_step(Is[str(j)], self.w[j], dt=dt)
-                W_arr[j] = w
+                M_arr[j] = self.M_model(w, **self.M_args)
                 self.update_Memristors([(j, w)])
 
-            M_series.append(W_arr)
+            M_series.append(M_arr)
 
         if save_dir:
             if not os.path.exists(save_dir):

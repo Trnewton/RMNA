@@ -18,19 +18,24 @@ class nanowire_network:
         Attributes
         ----------
         wires : shapely MultiLineString
-            collection of shapely linestring objects whcih represent the physical nanowire network
+            collection of shapely linestring objects whcih represent the physical
+            nanowire network
         plates : list
-            a list of tuples of the form (Linestring, "[N,I,V]", float) where the linestring object 
-            gives the physical representation of the plate, the string where the plate is current 
-            or voltage injecting, or neither, and the float the potential or current on the plate
+            a list of tuples of the form (Linestring, "[N,I,V]", float) where the 
+            linestring object gives the physical representation of the plate, the
+            string where the plate is current or voltage injecting, or neither, 
+            and the float the potential or current on the plate
         intercepts : list
-            list of tuples of the form ((x, y), "W[0-9]+", "[W,P][0-9]+") where the first tuple (x, y) 
-            details the location of the intercept, and the strings the two wires or plate which intercept 
+            list of tuples of the form ((x, y), "W[0-9]+", "[W,P][0-9]+") where 
+            the first tuple (x, y) 
+            details the location of the intercept, and the strings the two wires
+            or plate which intercept 
         graph : networkx Graph
-            graphical representation of network, formed using either the Junction Dominated Assumption
-            or the Multi-Nodular Representation
+            graphical representation of network, formed using either the Junction
+            Dominated Assumption or the Multi-Nodular Representation
         graph_representation : str
-            string detailing which graphical model was used to generate the graph attribute
+            string detailing which graphical model was used to generate the graph
+            attribute
 
         Methods
         -------
@@ -50,8 +55,8 @@ class nanowire_network:
 
             height : Height of box wires will be generated in 
 
-            creation_method : Method for generating location and orientation of each wire, 
-                              one of 'midpoint' or 'endpoint' (default='midpoint')
+            creation_method : Method for generating location and orientation of 
+                each wire, one of 'midpoint' or 'endpoint' (default='midpoint')
 
             seed : Random number genrator seed
         '''
@@ -59,9 +64,11 @@ class nanowire_network:
         if creation_method not in ('midpoint', 'endpoint'):
             raise ValueError('unsupported creation method: {}'.format(creation_method))
         elif creation_method == 'endpoint':
-            self.wires = MultiLineString(create_nwn_end(num_wires, width, height, wire_length, seed))
+            self.wires = MultiLineString(create_nwn_end(num_wires, width, height,\
+                wire_length, seed))
         elif creation_method == 'midpoint':
-            self.wires = MultiLineString(create_nwn_mid(num_wires, width, height, wire_length, seed))
+            self.wires = MultiLineString(create_nwn_mid(num_wires, width, height,\
+                 wire_length, seed))
 
         self.plates = None
         self.intercepts = None
@@ -87,7 +94,8 @@ class nanowire_network:
             INCOMPLETE. Changes plates potential or applied current.
         '''
         
-        # TODO: Create method to allow for already established plates to have new current/voltage values
+        # TODO: Create method to allow for already established plates to have new
+        #  current/voltage values
 
     def calc_intercepts(self):
         '''
@@ -149,9 +157,10 @@ class nanowire_network:
 
     def graph_jda(self, junction_res=1): 
         '''
-        Creates graph of nanowire network using the Junction Dominated Assumption, returning a networkx 
-        graph object with nodes either labelled with a 'P' to indicate a plate or a 'W' to indicate a 
-        wire followed by the order in which the plate/wire was labelled. 
+        Creates graph of nanowire network using the Junction Dominated Assumption, 
+        returning a networkx graph object with nodes either labelled with a 'P'
+        to indicate a plate or a 'W' to indicate a wire followed by the order in
+        which the plate/wire was labelled. 
         '''
         
         self.graph_representation = 'Junction Dominated Assumption'
@@ -200,23 +209,28 @@ class nanowire_network:
                     int2 = int1
                     int1 = heapq.heappop(heap)
 
-                    int_dist = np.sqrt( (int1[0][0] - int2[0][0])**2 + (int1[0][1] - int2[0][1])**2 )
-                    self.graph.add_edge(int1[1], int2[1], weight=resistance_density*int_dist)
+                    int_dist = np.sqrt( (int1[0][0] - int2[0][0])**2 + \
+                        (int1[0][1] - int2[0][1])**2 )
+                    self.graph.add_edge(int1[1], int2[1], \
+                        weight=resistance_density*int_dist)
 
         return self.graph
   
     def mna_matrix(self):
         '''
-            Uses graph representation of nanowire network to generate the A, x, and z matrices used in 
-            modified nodal analysis of an electric network. The x matrix is returned as a dictionary where
-            the key is the name of each node/plate and the value is which index of A and z it corresponds to.
+            Uses graph representation of nanowire network to generate the A, x, 
+            and z matrices used in modified nodal analysis of an electric network.
+            The x matrix is returned as a dictionary where the key is the name 
+            of each node/plate and the value is which index of A and z it 
+            corresponds to.
         '''
 
         if self.graph is None:
             print('Error: No graph representation, use graph_jda or graph_mnr first.')
             return None
 
-        A = np.zeros((len(self.graph) + len(self.plates), len(self.graph) + len(self.plates)))
+        A = np.zeros((len(self.graph) + len(self.plates), \
+                        len(self.graph) + len(self.plates)))
         x = {}
         z = np.zeros(len(self.graph) + len(self.plates))
 
@@ -254,7 +268,8 @@ class memristor:
 
     '''
 
-    def __init__(self, res_on, res_off, wire_gap, ionic_mobil, model, step_method, filament_length=0):
+    def __init__(self, res_on, res_off, wire_gap, ionic_mobil, model, step_method, \
+                filament_length=0):
         '''
         
         '''
@@ -269,10 +284,12 @@ class memristor:
 
     def time_step(self, dt, I):
         '''
-        #TODO : Calculates new resistance after a given time step based on current state
+        #TODO : Calculates new resistance after a given time step based on 
+        # current state
         '''
         
-       # dw = self.model(I, self.ionic_mobil, self.wire_gap, self.res_on, I, self.filament_length)
+       # dw = self.model(I, self.ionic_mobil, self.wire_gap, self.res_on, I, 
+       # self.filament_length)
 
         kawrds = {'I':I, 'u':self.ionic_mobil, 'w_0':self.wire_gap, 'R_o':self.res_on}
         self.filament_length = self.step_method(self.model,  **kawrds)
@@ -281,7 +298,8 @@ class memristor:
         '''
         '''
         #TODO : 
-        res = self.res_on * (self.filament_length/self.wire_gap) + self.res_off * (1 - self.filament_length/self.wire_gap)
+        res = self.res_on * (self.filament_length/self.wire_gap) \
+            + self.res_off * (1 - self.filament_length/self.wire_gap)
 
         return res
         
@@ -290,7 +308,8 @@ class memristor:
 
 def create_nwn_end(N, X, Y, l0, seed=None):
     '''
-    Generates a list of endpoints for a random network of wires using the "end-point" method
+    Generates a list of endpoints for a random network of wires using the 
+    "end-point" method
     '''
 
     import numpy as np
@@ -308,7 +327,8 @@ def create_nwn_end(N, X, Y, l0, seed=None):
 
 def create_nwn_mid(N, X, Y, l0, seed=None):
     '''
-    Generates a list of endpoints for a random network of wires using the "mid-point" method
+    Generates a list of endpoints for a random network of wires using the 
+    "mid-point" method
     '''
 
     import numpy as np
