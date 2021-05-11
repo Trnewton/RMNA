@@ -4,8 +4,9 @@
 
 import numpy as np
 import networkx as nx
+import pandas as pd
 
-import csv
+import csv, os
 
 
 #### Auxillary Functions ####
@@ -94,7 +95,27 @@ def filament_change_2(I, w, w_0=6e-9, R_on=100, u_v=1e-15):
     return dxdt
 
 def heuns_step(func, x_0, y_0, h, *args):
-    ''''''
+    '''
+        Performs a Heuns integration step with the given function and positions.
+
+        Parameters
+        ----------
+        func : callable
+            The function on which the Heuns step method will be performed
+        x_0 : float
+            x position of step
+        y_0 : float
+            y position of step
+        h : float
+            Step size
+        *args : *tuple
+            Extra arguments to be passed to func
+        
+        Returns
+        -------
+        y_1 : float
+            Result of intergration
+    '''
     
     k_1 = func(x_0, y_0, *args)
     # k_2 = func(x_0 + h, y_0 + h*k_1, *args)
@@ -166,15 +187,16 @@ class RMNA:
 
             Paramters
             ---------
-            network : list of lists
-                List where each element of the list descriibes a connection 
+            network : list of tuples
+                List where each element of the list describes a connection 
                 between nodes of the network. Each element should be of the form:
                     [(R|M|V), ID1, Val|None, ID2|None]
                 The first element tells the type of the connection: R-resisitor,
-                M-memristor, V-ID1 is a voltage input node. ID2 is not used if the 
-                first element is V, but if Val is provided it will be used to set 
-                the voltage injected. If the first element is R|M then Val should 
-                either be the resistance of the connection or the wire gap. 
+                M-memristor, V-Voltage. ID1 is the label for the first node in the 
+                connection. ID2 is not used if the first element is V. For a V 
+                element if Val is provided it will be used to set the voltage 
+                injected. If the first element is R|M then Val should either be
+                the resistance of the connection or the wire gap. respectivly. 
 
             Returns
             -------
@@ -211,7 +233,8 @@ class RMNA:
 
     def read_CSV(self, file_name, delimiter=','):
         '''
-            Used to read connections directly from a csv file
+            Used to read connections directly from a csv file. Performs the same 
+            function as read_Graph but from a csv.
         '''
 
         self.G = nx.Graph()
@@ -408,7 +431,7 @@ class RMNA:
             V = V_b - V_a
             M = self.M_model(self.w[j], **self.M_args)
             I = V / M
-            currents[j] = I
+            currents[str(j)] = I
 
             # else:
             #     print("ERROR: No such juncton exists.")
@@ -416,7 +439,7 @@ class RMNA:
 
         return currents
 
-    def run_RMNA(self, volt_In_Series, dt):
+    def run_RMNA(self, volt_In_Series, dt, save_dir=None):
         '''
             Runs a recursive MNA series over the stored graph network.
 
@@ -439,8 +462,6 @@ class RMNA:
             TODO: Update so we use Pandas dataframes instead of lists for data
             TODO: Add voltage reading
         '''
-
-        print('hello')
 
         # Get list of junctions
         junctions = list(self.w.keys())
@@ -470,10 +491,23 @@ class RMNA:
             # TODO: Maybe optimize this so the function only calls once
             W_arr = []
             for m, j in enumerate(junctions):
-                w = self.W_step(Is[j], self.w[j], dt=dt)
+                w = self.W_step(Is[str(j)], self.w[j], dt=dt)
                 W_arr.append(w)
                 self.update_Memristors([(j, w)])
 
             M_series.append(W_arr)
+
+        if save_dir:
+            if not os.path.exists(save_dir):
+                print('Directory does not exist, creating new one.')
+                os.makedirs(save_dir)
+            else:
+                print('Saving to:', save_dir)
+
+            I_df = pd.DataFrame(node_I_series[1:])
+            M_df = pd.DataFrame.from_records(M_series[1:], columns=M_series[0])
+
+            temp = I_df.to_csv(save_dir+'I_df.csv')
+            temp = M_df.to_csv(save_dir+'M_df.csv')
 
         return node_I_series, M_series #, node_V_series

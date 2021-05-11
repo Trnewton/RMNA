@@ -1,3 +1,7 @@
+'''
+
+'''
+
 # Base Python Imports
 import csv
 
@@ -25,7 +29,8 @@ def create_nwn_end(N, X=1, Y=1, l0=1, seed=None):
 
 def create_nwn_mid(N, X=1, Y=1, l0=1, seed=None):
     '''
-    Generates a list of endpoints for a random network of wires using the "mid-point" method
+        Generates a list of endpoints for a random network of wires using the 
+        "mid-point" method
     '''
      
     if seed is not None:
@@ -49,8 +54,26 @@ def csv_MNR():
 
 ############################ Grid Nanowire Networks ############################
 
-def csv_Grid(n, m):
-    raise NotImplementedError
+def list_Grid(N, H, M):
+    '''
+        Creates a NxH grid of memristors as a list representation
+    '''
+    
+    grid = []
+    
+    for n in range(N-1):
+        for h in range(H-1):
+            grid.append(('M', n*H+h, n*H+h+1, M))
+            grid.append(('M', n*H+h, n*H+h+H, M))
+            
+    for n in range(N-1):
+        grid.append(('M', (n+1)*H-1, (n+2)*H-1, M))
+        
+    for h in range(H-1):
+        grid.append(('M', (N-1)*H+h, (N-1)*H+h+1, M))
+            
+    return grid
+    
 
 ############################ Maze Nanowire Networks ############################
 
