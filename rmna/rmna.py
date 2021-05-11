@@ -65,7 +65,7 @@ def filament_change_1(I, w, w_0=6e-9, R_on=100, u_v=1e-15):
     
     return dwdt
 
-def filament_change_disipative_1(I, w, w_0=6e-9, R_on=100, u_v=1e-15, tau=1):
+def filament_change_disipative_1(I, w, w_0=6e-9, R_on=100, u_v=1e-15, tau=0.1):
     '''
         Basic model for computing change in filament length in nanowire junction
 
